@@ -1,48 +1,35 @@
 /*
- * Copyright (C) 2021-2024 The LineageOS Project
+ * SPDX-FileCopyrightText: 2021-2025 The LineageOS Project
  * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.lineageos.settings.doze
 
-import android.app.Activity
-import android.app.AlertDialog
-import android.content.Context
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.widget.CompoundButton
-import androidx.preference.*
-
+import androidx.preference.ListPreference
+import androidx.preference.Preference
+import androidx.preference.PreferenceCategory
+import androidx.preference.SwitchPreferenceCompat
 import com.android.settingslib.widget.MainSwitchPreference
+import com.android.settingslib.widget.SettingsBasePreferenceFragment
 
-class DozeSettingsFragment : PreferenceFragmentCompat(), Preference.OnPreferenceChangeListener,
-    CompoundButton.OnCheckedChangeListener {
-    private lateinit var alwaysOnDisplayPreference: SwitchPreference
-    private lateinit var switchBar: MainSwitchPreference
+class DozeSettingsFragment :
+    SettingsBasePreferenceFragment(), Preference.OnPreferenceChangeListener {
+    private lateinit var alwaysOnDisplayPreference: SwitchPreferenceCompat
 
     private var pickUpPreference: ListPreference? = null
-    private var pocketPreference: SwitchPreference? = null
+    private var pocketPreference: SwitchPreferenceCompat? = null
 
     private val handler = Handler(Looper.getMainLooper())
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(R.xml.doze_settings, rootKey)
 
-        val prefs = requireActivity().getSharedPreferences("doze_settings", Context.MODE_PRIVATE)
-        if (savedInstanceState == null && !prefs.getBoolean("first_help_shown", false)) {
-            AlertDialog.Builder(requireContext())
-                .setTitle(R.string.doze_settings_help_title)
-                .setMessage(R.string.doze_settings_help_text)
-                .setNegativeButton(R.string.dialog_ok) { _, _ ->
-                    prefs.edit().putBoolean("first_help_shown", true).apply()
-                }
-                .show()
-        }
-
         val dozeEnabled = Utils.isDozeEnabled(requireContext())
-        switchBar = findPreference(Utils.DOZE_ENABLE)!!
-        switchBar.addOnSwitchChangeListener(this)
+        val switchBar = findPreference<MainSwitchPreference>(Utils.DOZE_ENABLE)!!
+        switchBar.onPreferenceChangeListener = this
         switchBar.isChecked = dozeEnabled
 
         alwaysOnDisplayPreference = findPreference(Utils.ALWAYS_ON_DISPLAY)!!
@@ -80,27 +67,28 @@ class DozeSettingsFragment : PreferenceFragmentCompat(), Preference.OnPreference
     }
 
     override fun onPreferenceChange(preference: Preference, newValue: Any?): Boolean {
-        if (preference.key == Utils.ALWAYS_ON_DISPLAY) {
-            Utils.enableAlwaysOn(requireContext(), newValue as Boolean)
+        when (preference.key) {
+            Utils.ALWAYS_ON_DISPLAY -> {
+                val isChecked = newValue as Boolean
+                Utils.enableAlwaysOn(requireContext(), isChecked)
+            }
+            Utils.DOZE_ENABLE -> {
+                val isChecked = newValue as Boolean
+                Utils.enableDoze(requireContext(), isChecked)
+                Utils.checkDozeService(requireContext())
+
+                if (!isChecked) {
+                    Utils.enableAlwaysOn(requireContext(), false)
+                    alwaysOnDisplayPreference.isChecked = false
+                }
+
+                alwaysOnDisplayPreference.isEnabled = isChecked
+                pickUpPreference?.isEnabled = isChecked
+                pocketPreference?.isEnabled = isChecked
+            }
         }
+
         handler.post { Utils.checkDozeService(requireContext()) }
         return true
     }
-
-    override fun onCheckedChanged(buttonView: CompoundButton, isChecked: Boolean) {
-        Utils.enableDoze(requireContext(), isChecked)
-        Utils.checkDozeService(requireContext())
-
-        switchBar.isChecked = isChecked
-
-        if (!isChecked) {
-            Utils.enableAlwaysOn(requireContext(), false)
-            alwaysOnDisplayPreference.isChecked = false
-        }
-
-        alwaysOnDisplayPreference.isEnabled = isChecked
-        pickUpPreference?.isEnabled = isChecked
-        pocketPreference?.isEnabled = isChecked
-    }
-
 }
