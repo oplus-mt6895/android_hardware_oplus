@@ -9,8 +9,16 @@ import android.text.TextUtils;
 
 import java.util.List;
 
-public class OplusFeatureConfigManager {
+public class OplusFeatureConfigManager implements IOplusFeatureConfigManager {
     public static OplusFeatureConfigManager sInstance = null;
+
+    public interface OnFeatureActionObserver {
+        default void onFeaturesActionUpdate(String action, String feature, IOplusFeatureConfigManager.FeatureID featureID) {}
+    }
+
+    public interface OnFeatureObserver {
+        default void onFeatureUpdate(List<String> features) {}
+    }
 
     public static OplusFeatureConfigManager getInstance() {
         if (sInstance == null) {
@@ -23,7 +31,27 @@ public class OplusFeatureConfigManager {
         return false;
     }
 
-    public interface OnFeatureObserver {
-        default void onFeatureUpdate(List<String> features) {}
+    public boolean hasFeature(String featureName, int flag) {
+        return false;
+    }
+
+    public boolean isPermit(String featureName) {
+        return true;
+    }
+
+    public boolean registerFeatureActionObserver(OnFeatureActionObserver observer) {
+        return true;
+    }
+
+    public boolean unregisterFeatureActionObserver(OnFeatureActionObserver observer) {
+        return true;
+    }
+
+    public boolean registerFeatureObserver(List<String> features, OnFeatureObserver observer) {
+        return true;
+    }
+
+    public boolean unregisterFeatureObserver(OnFeatureObserver observer) {
+        return true;
     }
 }
